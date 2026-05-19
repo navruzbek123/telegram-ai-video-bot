@@ -30,7 +30,6 @@ Telegram bot that creates AI-generated videos from text prompts and automaticall
 ## 📊 Workflow Architecture
 User Message → AI Prompt Assistant → Approval → Video Generation → Social Media Post
 
-text
 
 1. User sends text/voice to Telegram bot
 2. AI analyzes and creates video prompt + caption
@@ -72,19 +71,9 @@ text
 
 ## 📸 Demo
 ![Telegram Chat](telegram.png)
+
 ![n8n ](ai.png)
 
-## 📁 Project Structure
-telegram-ai-video-bot/
-├── workflow.json # n8n workflow export
-├── README.md # Documentation
-├── screenshots/ # Demo screenshots
-│ ├── telegram-chat.png
-│ ├── workflow.png
-│ └── social-post.png
-└── LICENSE
-
-text
 
 ## 🔧 Example Commands
 
