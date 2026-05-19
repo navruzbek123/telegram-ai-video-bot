@@ -1,0 +1,524 @@
+{
+  "name": "Create & share AI videos with Telegram, Gemini & post to TikTok, Instagram, FB",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "options": {
+          "systemMessage": "You are a video prompt assistant for Telegram. Your task: 1. Analyze the user's message and create a video prompt. 2. Create relevant social media text with hashtags. 3. Present both to the user and ask for feedback. 4. If the user requests changes: Refine based on the feedback and present again. 5. If the user says approved or ok: Output the final version in JSON format. JSON format (only for approval): { videoPrompt: The final video prompt, socialMediaText: The social media text with hashtags }. Important: Only output the JSON if the user says approved. Otherwise, provide a regular text response with a suggestion."
+        }
+      },
+      "id": "7ef496db-e09c-4ba0-af5f-a4a1d51fb7b0",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        1536,
+        792
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "1dc31331-39bc-4313-972c-b74154892bee",
+      "name": "Listen for incoming events",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "position": [
+        416,
+        792
+      ],
+      "webhookId": "8aa08d7c-1916-438b-819b-9ac00f9e0f99",
+      "typeVersion": 1,
+      "credentials": {
+        "telegramApi": {
+          "id": "rvXaqc1H1VVuel8O",
+          "name": "Telegram account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "id": "daeaf123-5b7a-4f9a-9fc9-fa3d8a7f786c",
+      "name": "Speech to Text",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [
+        1312,
+        720
+      ],
+      "typeVersion": 1.3,
+      "credentials": {
+        "openAiApi": {
+          "id": "ULlrZtQb7Oo0IUmP",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "text",
+              "stringValue": "={{ $json?.message?.text || \"\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6ef24d69-fcac-451a-bc53-d83070e9df46",
+      "name": "Voice or Text",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        640,
+        792
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.voice.file_id }}",
+        "additionalFields": {}
+      },
+      "id": "be290fa3-0ac8-42c1-ae67-64005bfda1f7",
+      "name": "Get Voice File",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        1088,
+        720
+      ],
+      "webhookId": "75e36669-ffc3-4ab5-b497-f635be1e25dc",
+      "typeVersion": 1.1,
+      "credentials": {
+        "telegramApi": {
+          "id": "rvXaqc1H1VVuel8O",
+          "name": "Telegram account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiOutput = $input.item.json.output; if (!aiOutput) { throw new Error(\"No output\"); } let jsonString = aiOutput; jsonString = jsonString.replace(/```json\\s*/g, \"\").replace(/```\\s*/g, \"\"); const jsonMatch = jsonString.match(/\\{[\\s\\S]*\\}/); if (jsonMatch) { jsonString = jsonMatch[0]; } try { const parsed = JSON.parse(jsonString); if (!parsed.videoPrompt || !parsed.socialMediaText) { throw new Error(\"Missing fields\"); } return { videoPrompt: parsed.videoPrompt, socialMediaText: parsed.socialMediaText }; } catch (error) { const videoPromptMatch = aiOutput.match(/videoPrompt[\"']?\\s*:\\s*[\"']([^\"']+)[\"']/i); const socialMediaTextMatch = aiOutput.match(/socialMediaText[\"']?\\s*:\\s*[\"']([^\"']+)[\"']/i); if (videoPromptMatch && socialMediaTextMatch) { return { videoPrompt: videoPromptMatch[1], socialMediaText: socialMediaTextMatch[1] }; } throw new Error(\"Failed to parse\"); }"
+      },
+      "id": "e803e148-f8f8-48e5-9bb7-d36822424ca9",
+      "name": "Parse AI Output",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2112,
+        696
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Listen for incoming events').first().json.message.from.id }}",
+        "contextWindowLength": 10
+      },
+      "id": "ed6b8aa1-f57b-4f8a-a151-9261cb61513b",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        1672,
+        1016
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "a0bf9719-4272-46f6-ab3b-eda6f7b44fd8",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ebecb8e8-de8f-4bc5-9356-407e365ddfbf",
+      "name": "A Voice?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        864,
+        792
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Listen for incoming events').first().json.message.chat.id }}",
+        "text": "={{ $('AI Agent').item.json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "00718455-b243-474d-9b8b-fa77364d4735",
+      "name": "Send questions or proposal to user",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        2112,
+        888
+      ],
+      "webhookId": "7f650eaf-89fe-4785-bac7-a84e4b34fd57",
+      "typeVersion": 1.2,
+      "credentials": {
+        "telegramApi": {
+          "id": "rvXaqc1H1VVuel8O",
+          "name": "Telegram account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "or",
+          "conditions": [
+            {
+              "id": "id-1",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "videoPrompt"
+            },
+            {
+              "id": "id-2",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "socialMediaText"
+            },
+            {
+              "id": "id-3",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              },
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "{"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ae62698f-d8aa-4f38-8678-0a9224561de6",
+      "name": "Approved from user?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1888,
+        792
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Listen for incoming events').item.json.message.chat.id }}",
+        "text": "Okay. Your video is being prepared now. I'll let you know as soon as it's online.",
+        "additionalFields": {}
+      },
+      "id": "773cbeb3-011f-48db-bb31-7f995d98f902",
+      "name": "Inform user about processing",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        2336,
+        696
+      ],
+      "webhookId": "386daa43-00da-4d3f-80f0-868359af086a",
+      "typeVersion": 1.2,
+      "credentials": {
+        "telegramApi": {
+          "id": "rvXaqc1H1VVuel8O",
+          "name": "Telegram account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1544,
+        1016
+      ],
+      "id": "47059afd-6f50-4731-bbfe-7b5a8221c7d9",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "tp96OG7JlVX7yCfm",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendVideo",
+        "chatId": "={{ $(\"Listen for incoming events\").item.json.message.chat.id }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "={{ $(\"Parse AI Output\").item.json.socialMediaText }}"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2784,
+        696
+      ],
+      "id": "78447f67-a441-41e1-8b66-e113df1e991a",
+      "name": "Send a video",
+      "webhookId": "760fd5a9-f7e1-4a49-a269-81714850e3c4",
+      "credentials": {
+        "telegramApi": {
+          "id": "rvXaqc1H1VVuel8O",
+          "name": "Telegram account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "deapi-webhook",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        496,
+        608
+      ],
+      "id": "89bd719d-9930-4488-8805-591cb1281ab5",
+      "name": "Webhook",
+      "webhookId": "27aabad9-7a8b-4575-8c28-f6c4b7429a21"
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "prompt": "={{ $(\"Parse AI Output\").item.json.videoPrompt }}",
+        "ratio": "portrait",
+        "options": {}
+      },
+      "type": "n8n-nodes-deapi.deapi",
+      "typeVersion": 1,
+      "position": [
+        2560,
+        696
+      ],
+      "id": "a8dc6f34-0262-4ca9-b64c-5c308eb60d2c",
+      "name": "Generate a video",
+      "webhookId": "1c3b2755-1568-4ea7-92b7-65294b9e210d",
+      "credentials": {
+        "deApi": {
+          "id": "3PvKbWq64TvtGO1A",
+          "name": "deAPI account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "A Voice?": {
+      "main": [
+        [
+          {
+            "node": "Get Voice File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Approved from user?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice or Text": {
+      "main": [
+        [
+          {
+            "node": "A Voice?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Voice File": {
+      "main": [
+        [
+          {
+            "node": "Speech to Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Speech to Text": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Output": {
+      "main": [
+        [
+          {
+            "node": "Inform user about processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved from user?": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send questions or proposal to user",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listen for incoming events": {
+      "main": [
+        [
+          {
+            "node": "Voice or Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inform user about processing": {
+      "main": [
+        [
+          {
+            "node": "Generate a video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send questions or proposal to user": {
+      "main": [
+        []
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a video": {
+      "main": [
+        []
+      ]
+    },
+    "Generate a video": {
+      "main": [
+        [
+          {
+            "node": "Send a video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "942fb4c7-9c96-4867-9eed-1b0d319e91fc",
+  "meta": {
+    "templateId": "10850",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "eaa08d2f763fc2ae45a52c9f532589476a5176e9e9f9de52b7f04bbe2d461bb7"
+  },
+  "id": "cX6HTIXgtNZ0V3sB",
+  "tags": []
+}
