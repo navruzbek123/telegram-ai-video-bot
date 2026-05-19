@@ -71,10 +71,8 @@ text
    - Say "approved" to generate video
 
 ## 📸 Demo
-
-| Telegram Chat | Generated Video |
-|---------------|-----------------|
-| (screenshot) | (screenshot) |
+![Telegram Chat](telegram.png)
+![n8n ](ai.png)
 
 ## 📁 Project Structure
 telegram-ai-video-bot/
